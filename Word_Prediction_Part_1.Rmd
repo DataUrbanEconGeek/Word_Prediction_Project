@@ -9,18 +9,18 @@ output:
                 css: style.css
 ---
 
-##Executive Summary
+## Executive Summary
 
-In this Project we'll use three sets of data to create a word prediction application. The sets are from twitter, various blogs and news sources. They have been provided by SwiftKey through Coursera.com. In Part 1 we'll perform an exploritory analysis of the data. In Part 2 we'll create a predictive model and design an application. First I'll set the enviroment to the project's directory. 
+In this Project we'll use three sets of data to create a word prediction application. The sets are from twitter, various blogs and news sources. They have been provided by SwiftKey through Coursera.com. In this part, Part 1 we'll perform an exploritory analysis of the data. Get an idea of how large the scurces are, if there are any correlations among terms and which words appear most often. In Part 2 we'll create a predictive model and design an application. First lets set the enviroment to the project's directory, then dive in from there. 
 
 ```{r}
 setwd("~/Desktop/Word_Prediction_Project")
 root <- "~/Desktop/Word_Prediction_Project/"
 ```
 
-### Download and Load Data Sets
+#### Download and Load Data Sets
 
-We're going to need to download the zip file to the directory for the Coursera website, and then unzip it. This file contains data sets in several different languages. We're going to use the data sets that are in English for this project. This is located in the "en_US" directory. 
+We're going to need to download the zip file to the directory from the Coursera website, then we'll unzip it. This compressed file contains data sets in several different languages. We're going to use the data sets that are in English for this project. This is located in the "en_US" directory. 
 
 ```{r results='asis', cache=TRUE}
 url <- c("https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip")
@@ -47,7 +47,7 @@ news <- readLines(paste0(root, "final/en_US/en_US.news.txt"))
 
 ### Summarise Data Sets
 
-It's time to get a basic idea oh how the data looks. We're going to get a look at some of the information about these files, such as the size of the file and average word count with the use of a function that we'll create. This function will return a data frame that summarizes the data. 
+Lets take a look at some of the information about these files, such as the size of the file and average word count. Here we creat a function that will return a data frame that summarizes the data. 
 
 ```{r cache=TRUE, warning=FALSE, message=FALSE}
 library(dplyr)
@@ -86,14 +86,14 @@ library(knitr)
 kable(data_stats)
 ```
 
-We can see from the table the blogs data set is by far the largest file. This data set also contains the most number of words, characters, and words per line, but has the least amount of lines. It's the twitter data set that has the most amount of lines. The three data sets are very large. Running statistical analysis on these sets would take a lot of computational power and a lot of time. We're going to take random samples from we set that are much smaller in size in order to compute things at a quicker speed. First though, let's make sure that each set has a word count that is a little more even, as we don't want there to be any bias between the scources. We'll do this by deleting out some lines from two of the blogs and news scources. In worder to figure out how many lines need to be deleted we're going to subtract the blogs and news tottal word counts from the smallest wordcount(twitter with 30093369 words) then we'll divide it by the avarage number of words per lines.   
+We can see from the table the blogs data set is by far the largest file. This data set also contains the most number of words, characters, and words per line, but has the least amount of lines. It's the twitter data set that has the most amount of lines. The three data sets are very large. Running statistical analysis on these sets would take a lot of computational power and a lot of time. We're going to take random samples from the sets that are much smaller in size in order to compute things at a quicker speed. First though, let's make sure that each set has a word count that is a little more even, as we don't want there to be any bias between the scources when we combine them later. We'll do this by deleting out some lines from two of the blogs and news scources. In order to figure out how many lines need to be deleted we're going to subtract the blogs and news total word counts from the smallest wordcount(twitter with 30093369 words) then we'll divide it by the avarage number of words per lines.   
 
 ```{r cache=TRUE}
-blog_delete <- (data_stats$Total_Words[1] - data_stats$Total_Words[3]) / 
+blogs_delete <- (data_stats$Total_Words[1] - data_stats$Total_Words[3]) / 
         data_stats$Ave_Words_Per_Line[1]
 news_delete <- (data_stats$Total_Words[2] - data_stats$Total_Words[3]) / 
         data_stats$Ave_Words_Per_Line[2]
-blogs_2 <- blogs[1:(length(blogs) - round(blog_delete))]
+blogs_2 <- blogs[1:(length(blogs) - round(blogs_delete))]
 news_2 <- news[1:(length(news) - round(news_delete))]
 ```
 
@@ -107,9 +107,9 @@ data_stats_2 <- arrange(data_stats_2, desc(Source))
 kable(data_stats_2)
 ```
 
-### Sampling
+#### Sampling
 
-Now that the word counts are much closer is size we're going to randomize each data set. Then we'll save the data sets to the project's directory.
+Now that the word counts are much closer in size, we're going to randomize each data set. Then we'll save the data sets to the project's directory.
 
 ```{r cache=TRUE}
 set.seed(227)
@@ -127,11 +127,11 @@ randomizeSets <- function(data_set){
 }
 
 twitter_random <- randomizeSets(data_set = twitter)
-blog_random <- randomizeSets(data_set = blogs_2)
+blogs_random <- randomizeSets(data_set = blogs_2)
 news_random <- randomizeSets(data_set = news_2)
 ```
 
-Next we'll grab the samples. 
+Next we'll grab the samples. We're only going to use an extreamly small percentage of the data. Using roughly 2% of the data is small enough to make our calculations. 
 
 ```{r cache=TRUE}
 sampleExtrack <- function(dataSet, size){
@@ -141,13 +141,13 @@ sampleExtrack <- function(dataSet, size){
 }
 
 twitter_sample <- sampleExtrack(twitter_random, size = .02)
-blog_sample <- sampleExtrack(blog_random, size = .02)
+blogs_sample <- sampleExtrack(blogs_random, size = .02)
 news_sample <- sampleExtrack(news_random, size = .02)
 ```
 
 ### Cleanning and Term Frequencies 
 
-Now that we have made samples of each set as well as a combined set of the samples we need to do a little cleaning and reformatting. The function bellow uses the `tm` package to easily clean the sets. This function will change all letters to lowercase for the sake of consistency, it will also remove any punctuation and white space. Once the sets are clean they are turned into document term matrices. Then, we can do some further exploratory analysis to see which words are the most frequently used in the data sets. We should also compare the frequencies of the words from one data set to another, and establish if the three set corelate with eachother. 
+Now that we have made samples of each set we need to do a little cleaning and reformatting. The `cleanUp` function that we define bellow uses the `tm` package to easily clean the sets. This function will change all letters to lowercase for the sake of consistency, it will also remove any punctuation and white space. It returns a vector corpus object. Once we have made clean corpuses we turn them into document term matrices. We can do some further exploratory analysis to see which words are the most frequently used in the data sets. We should also compare the frequencies of the words from one data set to another, and establish if the three set corelate with eachother. 
 
 ```{r cache=TRUE, cache.lazy=FALSE, warning=FALSE, message=FALSE}
 library(tm)
@@ -180,7 +180,7 @@ wordFreq <- function(x){
 }
 
 twitter_freq <- wordFreq(twitter_sample)
-blogs_freq <- wordFreq(blog_sample)
+blogs_freq <- wordFreq(blogs_sample)
 news_freq <- wordFreq(news_sample)
 ```
 
@@ -204,8 +204,8 @@ par(mfrow = c(1, 3))
 twitter_pal <- brewer.pal(9,"YlGnBu")
 twitter_pal <- twitter_pal[(4:8)]
 
-blog_pal <- brewer.pal(9,"PuRd")
-blog_pal <- blog_pal[(5:9)]
+blogs_pal <- brewer.pal(9,"PuRd")
+blogs_pal <- blogs_pal[(5:9)]
 
 news_pal <- brewer.pal(9,"OrRd")
 news_pal <- news_pal[(5:9)]
@@ -214,9 +214,9 @@ twitter_cloud <- wordcloud(frequency_df$word[1:50], frequency_df$twitter[1:50],
           scale = c(5,1), min.freq = 202, 
           colors = twitter_pal, rot.per=0.35, use.r.layout=FALSE, random.order = FALSE)
 
-blog_cloud <- wordcloud(frequency_df$word[1:50], frequency_df$blog[1:50], 
+blogs_cloud <- wordcloud(frequency_df$word[1:50], frequency_df$blogs[1:50], 
           scale = c(5,1), min.freq = 202, 
-          colors = blog_pal, rot.per=0.35, use.r.layout=FALSE, random.order = FALSE)
+          colors = blogs_pal, rot.per=0.35, use.r.layout=FALSE, random.order = FALSE)
 
 news_cloud <- wordcloud(frequency_df$word[1:39], frequency_df$news[1:39], 
           scale = c(5,1), min.freq = 202, 
@@ -227,15 +227,34 @@ news_cloud <- wordcloud(frequency_df$word[1:39], frequency_df$news[1:39],
 kable(head(frequency_df))
 ```
 
-As you can see from the table above the word "the" is use the most often in all the sets. This dose not surprise me. 
+As you can see from the table above the word "the" is used the most often in all the sets. This dose not surprise me. 
 
-Now if we plot the sets against each other we can see that there is a strong correlation amounts words in all the sets. Meaning that words that often appear in one set will also often appear in another set. 
+Now if we plot the sets against each other, we can see that there is a strong correlation amungst words in all the sets. Meaning that words that often appear in one set will also often appear in another set. The correlation coefficient further backs this up.  
+
 ```{r cache=TRUE, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(gridExtra)
-plot1 <- qplot(twitter, blog, data = frequency_df, main = "Twitter vs. Blogs Frequency of Words")
-plot2 <- qplot(twitter, news, data = frequency_df, main = "Twitter vs. News Frequency of Words")
-plot3 <- qplot(news, blog, data = frequency_df, main = "News vs. Blogs Frequency of Words")
+plot1 <- ggplot(data = frequency_df, aes(x = twitter, y = blogs)) + 
+        geom_point() +
+        annotate("text", x=Inf, y = Inf,
+                                label = paste0("cor: ",
+                                        round(cor(frequency_df$twitter, frequency_df$blogs), 2)),
+                                vjust=1, hjust=1, col = "#F8766D") +
+        labs(title = "Twitter vs. Blogs Frequency of Words")
+plot2 <- ggplot(data = frequency_df, aes(x = twitter, y = news)) +
+        geom_point() +
+        annotate("text", x=Inf, y = Inf,
+                                label = paste0("cor: ",
+                                        round(cor(frequency_df$twitter, frequency_df$news), 2)),
+                                vjust=1, hjust=1, col = "#F8766D") +
+        labs(title = "Twitter vs. News Frequency of Words")
+plot3 <- ggplot(data = frequency_df, aes(x = news, y = blogs)) +
+        geom_point() + 
+        annotate("text", x=Inf, y = Inf,
+                                label = paste0("cor: ",
+                                        round(cor(frequency_df$news, frequency_df$blogs), 2)),
+                                vjust=1, hjust=1, col = "#F8766D") +
+        labs(title = "News vs. Blogs Frequency of Words")
 grid.arrange(plot1, plot2, plot3, nrow = 2, ncol = 2)
 ```
 
@@ -244,7 +263,7 @@ grid.arrange(plot1, plot2, plot3, nrow = 2, ncol = 2)
 Now lets combine the three seperate sources. 
 
 ```{r cache=TRUE}
-master_set <- c(twitter_sample, blog_sample, news_sample)
+master_set <- c(twitter_sample, blogs_sample, news_sample)
 
 master_random <- randomizeSets(master_set)
 master_sample <- sampleExtrack(master_random, size = .1)
