@@ -9,9 +9,9 @@ output:
                 css: style.css
 ---
 
-## Executive Summary
+## Background
 
-In this Project we'll use three sets of data to create a word prediction application. The sets are from twitter, various blogs and news sources. They have been provided by SwiftKey through Coursera.com. In this part, Part 1 we'll perform an exploritory analysis of the data. Get an idea of how large the scurces are, if there are any correlations among terms and which words appear most often. In Part 2 we'll create a predictive model and design an application. First lets set the enviroment to the project's directory, then dive in from there. 
+In this Project we'll use three sets of data to create a word prediction application. The sets are from twitter, various blogs and news sources. They have been provided by SwiftKey through Coursera.com. In this part, Part 1 we'll perform an exploratory analysis of the data. Get an idea of how large the sources are, if there are any correlations among terms and which words appear most often. In Part 2 we'll create a predictive model and design an application. First lets set the environment to the project's directory, then dive in from there. 
 
 ```{r}
 setwd("~/Desktop/Word_Prediction_Project")
@@ -47,14 +47,18 @@ news <- readLines(paste0(root, "final/en_US/en_US.news.txt"))
 
 ### Summarise Data Sets
 
-Lets take a look at some of the information about these files, such as the size of the file and average word count. Here we creat a function that will return a data frame that summarizes the data. 
+Lets take a look at some of the information about these files, such as the size of the file and average word count. Here we create a function that will return a data frame that summarizes the data. 
 
 ```{r cache=TRUE, warning=FALSE, message=FALSE}
 library(dplyr)
 library(stringi)
 summaryStats <- function(x){
-        size <- round(file.info(paste0(root, "final/en_US/en_US.", deparse(substitute(x)), 
-                                       ".txt"))$size / 1024^2)
+        size <- round(file.info(
+                        paste0(root, 
+                               "final/en_US/en_US.", 
+                                deparse(substitute(x)), 
+                                ".txt")
+                        )$size / 1024^2)
         stats_1 <- stri_stats_general(x)
         words <- sum(stri_count_words(x))
         ave_words_per_line <- words/stats_1[1]
@@ -86,7 +90,7 @@ library(knitr)
 kable(data_stats)
 ```
 
-We can see from the table the blogs data set is by far the largest file. This data set also contains the most number of words, characters, and words per line, but has the least amount of lines. It's the twitter data set that has the most amount of lines. The three data sets are very large. Running statistical analysis on these sets would take a lot of computational power and a lot of time. We're going to take random samples from the sets that are much smaller in size in order to compute things at a quicker speed. First though, let's make sure that each set has a word count that is a little more even, as we don't want there to be any bias between the scources when we combine them later. We'll do this by deleting out some lines from two of the blogs and news scources. In order to figure out how many lines need to be deleted we're going to subtract the blogs and news total word counts from the smallest wordcount(twitter with 30093369 words) then we'll divide it by the avarage number of words per lines.   
+We can see from the table the blogs data set is by far the largest file. This data set also contains the most number of words, characters, and words per line, but has the least amount of lines. It's the twitter data set that has the most amount of lines. The three data sets are very large. Running statistical analysis on these sets would take a lot of computational power and a lot of time. We're going to take random samples from the sets that are much smaller in size in order to compute things at a quicker speed. First though, let's make sure that each set has a word count that is a little more even, as we don't want there to be any bias between the sources when we combine them later. We'll do this by deleting out some lines from the blogs and news sources. In order to figure out how many lines need to be deleted we're going to subtract the blogs and news total word counts from the smallest word count(twitter with 30093369 words) then we'll divide it by the average number of words per lines.   
 
 ```{r cache=TRUE}
 blogs_delete <- (data_stats$Total_Words[1] - data_stats$Total_Words[3]) / 
@@ -131,7 +135,7 @@ blogs_random <- randomizeSets(data_set = blogs_2)
 news_random <- randomizeSets(data_set = news_2)
 ```
 
-Next we'll grab the samples. We're only going to use an extreamly small percentage of the data. Using roughly 2% of the data is small enough to make our calculations. 
+Next we'll grab the samples. We're only going to use an extremely small percentage of the data. Using roughly 2% of the data is small enough to make our calculations. 
 
 ```{r cache=TRUE}
 sampleExtrack <- function(dataSet, size){
@@ -147,7 +151,7 @@ news_sample <- sampleExtrack(news_random, size = .02)
 
 ### Cleanning and Term Frequencies 
 
-Now that we have made samples of each set we need to do a little cleaning and reformatting. The `cleanUp` function that we define bellow uses the `tm` package to easily clean the sets. This function will change all letters to lowercase for the sake of consistency, it will also remove any punctuation and white space. It returns a vector corpus object. Once we have made clean corpuses we turn them into document term matrices. We can do some further exploratory analysis to see which words are the most frequently used in the data sets. We should also compare the frequencies of the words from one data set to another, and establish if the three set corelate with eachother. 
+We now have made samples of each set, but we need to do a little cleaning and reformatting. The `cleanUp` function that we define bellow uses the `tm` package to easily clean the sets. This function will change all letters to lowercase for the sake of consistency, it will also remove any punctuation and white space. It returns a vector corpus object. Once we have made clean corpses we turn them into document term matrices. We can do some further exploratory analysis to see which words are the most frequently used in the data sets. We should also compare the frequencies of the words from one data set to another, and establish if the three set correlate with each other. 
 
 ```{r cache=TRUE, cache.lazy=FALSE, warning=FALSE, message=FALSE}
 library(tm)
@@ -184,22 +188,19 @@ blogs_freq <- wordFreq(blogs_sample)
 news_freq <- wordFreq(news_sample)
 ```
 
-#### Top Words
-
-```{r cache=TRUE, warning=FALSE, message=FALSE, echo=FALSE}
+```{r cache=TRUE, warning=FALSE, message=FALSE, echo=FALSE, results=FALSE}
 library(plyr)
 twitter_freq$word <- row.names(twitter_freq)
 blogs_freq$word <- row.names(blogs_freq)
 news_freq$word <- row.names(news_freq)
 
 frequency_df <- join_all(list(twitter_freq[1:5000, , drop = FALSE], 
-                              blogs_freq[1:5000, , drop = FALSE],
-                              news_freq[1:5000, , drop = FALSE]), by = "word", type = "full")
-frequency_df <- select(frequency_df, word, twitter, blog, news)
+        blogs_freq[1:5000, , drop = FALSE],
+        news_freq[1:5000, , drop = FALSE]), by = "word", type = "full")
+frequency_df <- select(frequency_df, word, twitter, blogs, news)
 
 
 library(wordcloud)
-par(mfrow = c(1, 3))
 
 twitter_pal <- brewer.pal(9,"YlGnBu")
 twitter_pal <- twitter_pal[(4:8)]
@@ -210,57 +211,92 @@ blogs_pal <- blogs_pal[(5:9)]
 news_pal <- brewer.pal(9,"OrRd")
 news_pal <- news_pal[(5:9)]
 
-twitter_cloud <- wordcloud(frequency_df$word[1:50], frequency_df$twitter[1:50], 
-          scale = c(5,1), min.freq = 202, 
-          colors = twitter_pal, rot.per=0.35, use.r.layout=FALSE, random.order = FALSE)
+png("wordcloud_twitter.png", width = 480, height = 480)
+twitter_cloud <- wordcloud(frequency_df$word[1:150], frequency_df$twitter[1:150], 
+        scale = c(5,1), min.freq = 1, 
+        colors = twitter_pal, rot.per=0.35, use.r.layout=FALSE, 
+        random.order = FALSE)
 
-blogs_cloud <- wordcloud(frequency_df$word[1:50], frequency_df$blogs[1:50], 
-          scale = c(5,1), min.freq = 202, 
-          colors = blogs_pal, rot.per=0.35, use.r.layout=FALSE, random.order = FALSE)
+png("wordcloud_blogs.png", width = 480, height = 480)
+blogs_cloud <- wordcloud(frequency_df$word[1:150], frequency_df$blogs[1:150], 
+        scale = c(5,1), min.freq = 1, 
+        colors = blogs_pal, rot.per=0.35, use.r.layout=FALSE, 
+        random.order = FALSE)
 
-news_cloud <- wordcloud(frequency_df$word[1:39], frequency_df$news[1:39], 
-          scale = c(5,1), min.freq = 202, 
-          colors = news_pal, rot.per=0.35, use.r.layout=FALSE, random.order = FALSE)
+png("wordcloud_news.png", width = 480, height = 480)
+news_cloud <- wordcloud(na.omit(frequency_df$word[1:150]), 
+                        na.omit(frequency_df$news[1:150]), 
+        scale = c(5,1), min.freq = 1, 
+        colors = news_pal, rot.per=0.35, use.r.layout=FALSE, 
+        random.order = FALSE)
 ```
 
-```{r echo=FALSE, cache=TRUE}
+#### Top Words
+
+```{r echo=FALSE, cache=TRUE, message=FALSE, warning=FALSE}
+par(mfrow = c(1, 3))
+
+include_graphics("/Users/andrewrosa/Desktop/Word_Prediction_Project/wordcloud_twitter.png")
+include_graphics("/Users/andrewrosa/Desktop/Word_Prediction_Project/wordcloud_blogs.png")
+include_graphics("/Users/andrewrosa/Desktop/Word_Prediction_Project/wordcloud_news.png")
+```
+
+```{r echo=FALSE, cache=TRUE, message=FALSE, warning=FALSE}
 kable(head(frequency_df))
 ```
 
-As you can see from the table above the word "the" is used the most often in all the sets. This dose not surprise me. 
+Above the this table are three word clouds for the twitter, blogs, and news data-sets respectively. 
+As you can see from the table and word clouds, the word "the" is used the most often in all the sets. Words like "you" and "and" are frequently used as well. These words are referred to as stop words. Stop words are words that get used often but don't have much significance to them. In some NLP project you may want to remove the stop words to view the relationships of significant words. For a word prediction application we'll want to keep them included as they reflect how we would normally speak. 
 
-Now if we plot the sets against each other, we can see that there is a strong correlation amungst words in all the sets. Meaning that words that often appear in one set will also often appear in another set. The correlation coefficient further backs this up.  
+If we plot the sets against each other, we can see that there is a strong correlation among words in all the sets. Meaning that words that often appear in one set will also often appear in another set. The correlation coefficient further backs this up.  
 
 ```{r cache=TRUE, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(gridExtra)
+
 plot1 <- ggplot(data = frequency_df, aes(x = twitter, y = blogs)) + 
         geom_point() +
-        annotate("text", x=Inf, y = Inf,
-                                label = paste0("cor: ",
-                                        round(cor(frequency_df$twitter, frequency_df$blogs), 2)),
-                                vjust=1, hjust=1, col = "#F8766D") +
-        labs(title = "Twitter vs. Blogs Frequency of Words")
+        annotate("text", x = Inf, y = Inf,
+                label = paste0("cor: ",
+                        round(cor(
+                                frequency_df$twitter, 
+                                frequency_df$blogs,
+                                use = "complete.obs"),
+                                2)
+                        ),
+                vjust = 3, hjust = 1, col = "#F8766D") +
+        labs(title = "Twitter vs. Blogs")
+
 plot2 <- ggplot(data = frequency_df, aes(x = twitter, y = news)) +
         geom_point() +
-        annotate("text", x=Inf, y = Inf,
-                                label = paste0("cor: ",
-                                        round(cor(frequency_df$twitter, frequency_df$news), 2)),
-                                vjust=1, hjust=1, col = "#F8766D") +
-        labs(title = "Twitter vs. News Frequency of Words")
+        annotate("text", x = Inf, y = Inf,
+                label = paste0("cor: ",
+                        round(cor(
+                                frequency_df$twitter,
+                                frequency_df$news,
+                                use = "complete.obs"), 
+                                2)),
+                vjust = 3, hjust = 1, col = "#F8766D") +
+        labs(title = "Twitter vs. News")
+
 plot3 <- ggplot(data = frequency_df, aes(x = news, y = blogs)) +
         geom_point() + 
-        annotate("text", x=Inf, y = Inf,
-                                label = paste0("cor: ",
-                                        round(cor(frequency_df$news, frequency_df$blogs), 2)),
-                                vjust=1, hjust=1, col = "#F8766D") +
-        labs(title = "News vs. Blogs Frequency of Words")
+        annotate("text", x = Inf, y = Inf,
+                label = paste0("cor: ",
+                        round(cor(
+                                frequency_df$news,
+                                frequency_df$blogs,
+                                use = "complete.obs"),
+                                2)),
+                vjust = 3, hjust = 1, col = "#F8766D") +
+        labs(title = "News vs. Blogs")
+
 grid.arrange(plot1, plot2, plot3, nrow = 2, ncol = 2)
 ```
 
 ### Combine Sources
 
-Now lets combine the three seperate sources. 
+Lets combine the three separate sources.  
 
 ```{r cache=TRUE}
 master_set <- c(twitter_sample, blogs_sample, news_sample)
@@ -273,15 +309,17 @@ master_cleaned <- cleanUp(master_sample)
 
 ### Bigram and Trigram Tokens
 
-Now that we have an idea of which words are used the most frequently overall we should try to get an idea of which combination of words also frequently appear in the data. From here on out we'll just be using the combined data set for ease. In order for us to get an idea of which combination of words are use we need to create word tokens. We'll make tokens for bi-grams(two word combinations), and trig-rams(three word combinations). The functions bellow create the bi-grams and trig-rams and plot out histograms of the most frequent combinations. 
+We have an idea of which words are used the most frequently in the data-set, we should try to get an idea of which combination of words also frequently appear in the data. From here on out we'll just be using the combined data set. In order for us to get an idea of which combination of words are used we need to create word tokens. Tokens in NLP are chopped pieces of a character sequence, you define them by the size. We'll make tokens for bi-grams(two word combinations), and trig-rams(three word combinations). The functions bellow create the bi-grams and tri-grams then plots out their corresponding histograms of the top most frequent combinations. 
 
 ```{r cache=TRUE, cache.lazy=FALSE, warning=FALSE, message=FALSE}
 library(RWeka)
 options(mc.cores = 1)
 
 bigram_tokenizer <- function(x) 
-        unlist(lapply(ngrams(words(x), 2), paste, collapse = " "), use.names = FALSE)
-bigram_tdm <- TermDocumentMatrix(master_cleaned, control = list(tokenize = bigram_tokenizer))
+        unlist(lapply(ngrams(words(x), 2), paste, collapse = " "), 
+               use.names = FALSE)
+bigram_tdm <- TermDocumentMatrix(master_cleaned, 
+                                control = list(tokenize = bigram_tokenizer))
 bigram_matrix <- as.matrix(bigram_tdm)
 
 bigram_frequency <- rowSums(bigram_matrix)
@@ -292,17 +330,22 @@ bigram <- data.frame(bigram_top_10)
 bigram$terms <- rownames(bigram)
 rownames(bigram) <- NULL
 colnames(bigram) <- c("frequency", "terms")
+bigram$terms <- reorder(bigram$terms, bigram$frequency)
 
-bigram_plot <- ggplot(bigram, aes(terms, frequency)) + 
+bigram_plot <- ggplot(bigram, aes(x = terms, y = frequency, fill = terms)) + 
         geom_bar(stat = "identity") + 
-        coord_flip()
+        coord_flip() +
+        theme(legend.position = "none") +
+        labs(title = "Top Bi-gram Tokens")
 bigram_plot
 ```
 
 ```{r cache=TRUE, cache.lazy=FALSE}
 trigram_tokenizer <- function(x)
-        unlist(lapply(ngrams(words(x), 3), paste, collapse = " "), use.names = FALSE)
-trigram_tdm <- TermDocumentMatrix(master_cleaned, control = list(tokenize = trigram_tokenizer))
+        unlist(lapply(ngrams(words(x), 3), paste, collapse = " "), 
+               use.names = FALSE)
+trigram_tdm <- TermDocumentMatrix(master_cleaned, 
+                                control = list(tokenize = trigram_tokenizer))
 trigram_matrix <- as.matrix(trigram_tdm)
 
 trigram_frequency <- rowSums(trigram_matrix)
@@ -313,22 +356,28 @@ trigram <- data.frame(trigram_top_10)
 trigram$terms <- rownames(trigram)
 rownames(trigram) <- NULL
 colnames(trigram) <- c("frequency", "terms")
+trigram$terms <- reorder(trigram$terms, trigram$frequency)
 
-trigram_plot <- ggplot(trigram, aes(terms, frequency)) + 
+trigram_plot <- ggplot(trigram, aes(x = terms, y = frequency, fill = terms)) + 
         geom_bar(stat="identity") + 
-        coord_flip()
+        coord_flip() +
+        theme(legend.position = "none") +
+        labs(title = "Top Tri-gram Tokens")
 trigram_plot
 ```
 
 
-From this you can see that combination of words like "of the", "in the", "one of the", and "a lot of" are used often. 
+From this you can see that combinations of words like "of the", "in the", "one of the", and "a lot of" are used often. 
 
 ## Conclusion
 
-From this analysis we see which terms and combination of terms are used most often in the data sets. This will come in handy in making a text predictor application. After running the analysis, I have found that the samples may still be too large to quickly run prediction models of. A smaller sample may have to be made. 
+From this analysis we see which terms and combination of terms are used most often in the data sets. This will come in handy in making a text predictor application. From here we're going to make the assumption that the sample is a reflection of the broader data. If one wanted, they could take more random samples from the data sets and rerun the term frequencies analysis to see if the results are similar. 
 
+In Part 2 we'll start by using our uni, bi, and tri-gram frequencies with conditional probability to create our prediction application. 
 
+#### Project Scource Code
 
+https://github.com/PunkFood-Disme/Word_Prediction_Project
 
 
 
